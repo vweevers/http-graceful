@@ -1,0 +1,22 @@
+{
+  "name": "http-graceful",
+  "version": "0.0.0",
+  "description": "Gracefully open and close your http server",
+  "main": "index.js",
+  "scripts": {
+    "test": "tape test.js"
+  },
+  "keywords": [
+    "http",
+    "server",
+    "open",
+    "close",
+    "sockets"
+  ],
+  "author": "Vincent Weevers",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vweevers/http-graceful"
+  }
+}
