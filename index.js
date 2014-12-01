@@ -1,10 +1,10 @@
 module.exports = starter
 
 var httpClose = require('http-close')
-  , xtend = require('xtend')
-  , after = require('after')
-  , http = require('http')
-  , debug = require('debug')('http-graceful')
+  , xtend     = require('xtend')
+  , http      = require('http')
+  , debug     = require('debug')('http-graceful')
+  , Emitter   = require('async-eventemitter')
 
   , defaults =
     { port: 0
@@ -22,8 +22,10 @@ var httpClose = require('http-close')
 
 function starter(app, opts) {
   opts = opts ? xtend(defaults, opts) : xtend(defaults)
+  opts.app = app
 
   var server, started = 0
+    , emitter = new Emitter()
 
   function start(sOpts, cb) {
     if (typeof sOpts == 'function')
@@ -31,59 +33,62 @@ function starter(app, opts) {
 
     if (started++) return cb && cb(null, app)
 
+    server = opts.server = http.createServer(app)
     sOpts = sOpts ? xtend(opts, sOpts) : xtend(opts)
 
-    var fns = sOpts.before ? [].concat(sOpts.before) : []
-    var next = after(fns.length, open)
-    
-    fns.forEach(function(fn){
-      fn(app, sOpts, next)
-    })
+    if (sOpts.close_sockets)
+      httpClose({timeout: sOpts.sockets_timeout}, server)
 
-    function open(err){
-      if (err) return cb && cb(err)
-
-      server = http.createServer(app)
-
-      if (sOpts.close_sockets)
-        httpClose({timeout: sOpts.sockets_timeout}, server)
+    emitter.emit('before listen', sOpts, function listen(err){
+      if (err) {
+        debug(err)
+        return cb && cb(err)
+      }
 
       server.listen(sOpts.port, sOpts.hostname, function(){
         var ad = server.address()
         debug('Listening on %s:%d', ad.address, ad.port)
-        cb && process.nextTick(function(){
-          cb(null, app)
-        })
+
+        emitter.emit('listen', sOpts, function(err){
+          if (err) return start.close(function(){
+            debug(err)
+            cb && cb(err)
+          })
+
+          cb && process.nextTick(function(){
+            cb(null, app)
+          })
+        })       
       })
-    }
-  }
+    })
+  }  
+
+  for(var m in Emitter.prototype)
+    start[m] = emitter[m].bind(emitter)
 
   start.close = function(cOpts, cb) {
-    if (!started) return cb && cb()
-
     if (typeof cOpts == 'function')
       cb = cOpts, cOpts = null
 
+    if (!started) return cb && cb()
+
     cOpts = cOpts ? xtend(opts, cOpts) : xtend(opts)
 
-    var fns = cOpts.after ? [].concat(cOpts.after) : []
-    var next = after(fns.length, close)
-    
-    fns.forEach(function(fn){
-      fn(app, cOpts, next)
-    })
+    emitter.emit('before close', cOpts, function close(err) {
+      if (err) {
+        debug(err)
+        return cb && cb(err)
+      }
 
-    function close(err) {
-      if (err) return cb && cb(err)
       if (server && cOpts.close_server) server.close(closed)
       else closed()
 
       function closed() {
         debug('Server closed')
         started = 0
-        cb && cb()
+        emitter.emit('close', cOpts, cb)
       }
-    }
+    })
   }
 
   // Clean exit.

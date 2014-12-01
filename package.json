@@ -20,12 +20,13 @@
     "url": "https://github.com/vweevers/http-graceful"
   },
   "dependencies": {
-    "after": "^0.8.1",
+    "async-eventemitter": "^0.2.2",
     "debug": "^2.1.0",
-    "http-close": "0.0.2",
+    "http-close": "^0.0.2",
     "xtend": "^4.0.0"
   },
   "devDependencies": {
+    "cli-prompt": "^0.4.1",
     "tape": "^3.0.3"
   }
 }

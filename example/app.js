@@ -4,7 +4,7 @@ var app = function(req, res) {
   res.end('aye')
 }
 
-module.exports = httpGraceful(app, {
+var start = module.exports = httpGraceful(app, {
   port: 0,
   hostname: '127.0.0.1',
 
@@ -15,22 +15,20 @@ module.exports = httpGraceful(app, {
   close_sockets: true,
   
   // Timeout for open sockets (see `http-close`)
-  sockets_timeout: 100,
-
-  before: function(app, opts, done){
-    // open db
-    openMockDatabase(function(err, db){
-      app.db = db
-      done()
-    })
-  },
-
-  after: function(app, opts, done){
-    // close db
-    app.db.close(done)
-  }
+  sockets_timeout: 100
 })
 
+start.on('before listen', function(opts, next){
+  openMockDatabase(function(err, db){
+    app.db = db
+    next()
+  })
+})
+
+start.on('close', function(opts, next){
+  console.log('Server closed.')
+  app.db.close(next)
+})
 
 function openMockDatabase(cb){
   console.log('Opening the database')
