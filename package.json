@@ -1,6 +1,6 @@
 {
   "name": "http-graceful",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Gracefully open and close your http server",
   "main": "index.js",
   "scripts": {
